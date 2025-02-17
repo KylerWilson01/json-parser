@@ -1,64 +1,127 @@
 package internal
 
+// TokenType is a string.
 type TokenType string
 
+// Token holds what a token should represent.
 type Token struct {
 	Type    TokenType
 	Literal string
 }
 
+// Lexer is what we use to make sure that all Tokens are valid.
 type Lexer struct {
 	input        string
 	position     int
 	readPosition int
 	ch           byte
+	Tokens       []Token
 }
 
 const (
-	ILLEGAL          TokenType = "Illegal"
-	EOF              TokenType = "eof"
-	OPENING_CURLY    TokenType = "{"
-	CLOSING_CURLY    TokenType = "}"
-	OPENING_BRACKET  TokenType = "["
-	CLOSEING_BRACKET TokenType = "]"
-	COLON            TokenType = ":"
-	STRING           TokenType = "string"
-	NUMBER           TokenType = "number"
+	// Illegal shows that the token is not valid
+	Illegal TokenType = "Illegal"
+
+	// OpeningCurly is what shows the start of an object
+	OpeningCurly TokenType = "{"
+	// ClosingCurly is what shows the end of an object
+	ClosingCurly TokenType = "}"
+	// OpeningBracket marks the begging of an array
+	OpeningBracket TokenType = "["
+	// CloseingBracket marks the end of an array
+	CloseingBracket TokenType = "]"
+
+	// Colon seperates the key and value
+	Colon TokenType = ":"
+	// Comma seperates the values
+	Comma TokenType = ","
+
+	// Null marks a primitive null
+	Null TokenType = "null"
+	// String marks a primitive string
+	String TokenType = "string"
+	// Number marks a primitive number
+	Number TokenType = "number"
+	// True marks a primitive true boolean
+	True TokenType = "true"
+	// False marks a primitive false boolean
+	False TokenType = "false"
 )
 
+// NewLexer creates a pointer to a Lexer.
 func NewLexer(input string) *Lexer {
 	l := Lexer{input: input}
 	l.readChar()
 	return &l
 }
 
-func (l *Lexer) NextToken() Token {
-	var t Token
+// ValidateTokens returns the next token.
+func (l *Lexer) ValidateTokens() {
+	idx := 0
+	for ; idx < len(l.input); idx++ {
+		l.skipWhiteSpace()
 
-	l.skipWhiteSpace()
-
-	switch l.ch {
-	case '{':
-		t = Token{Literal: string(l.ch), Type: OPENING_CURLY}
-	case '}':
-		t = Token{Literal: string(l.ch), Type: CLOSING_CURLY}
-	case ':':
-		t = Token{Literal: string(l.ch), Type: COLON}
-	case '"':
-		t = l.readString()
-	case 0:
-		t = Token{Literal: "", Type: EOF}
-	default:
-		if l.isNumber(l.ch) || l.ch == '-' {
-			t = l.readNumber()
-		} else {
-			t = Token{Literal: "", Type: ILLEGAL}
+		switch l.ch {
+		case '{':
+			l.Tokens = append(l.Tokens, Token{Literal: string(l.ch), Type: OpeningCurly})
+		case '}':
+			if l.Tokens[idx-1].Type == Comma {
+				l.Tokens[idx-1].Type = Illegal
+			}
+			l.Tokens = append(l.Tokens, Token{Literal: string(l.ch), Type: ClosingCurly})
+		case ':':
+			l.Tokens = append(l.Tokens, Token{Literal: string(l.ch), Type: Colon})
+		case ',':
+			l.Tokens = append(l.Tokens, Token{Literal: string(l.ch), Type: Comma})
+		case '"':
+			l.Tokens = append(l.Tokens, l.readString())
+		default:
+			if l.isNumber(l.ch) || l.ch == '-' {
+				l.Tokens = append(l.Tokens, l.readNumber())
+			} else if l.isLiteral(l.ch) {
+				l.Tokens = append(l.Tokens, l.readLiteral())
+			} else {
+				l.Tokens = append(l.Tokens, Token{Literal: "", Type: Illegal})
+			}
 		}
+
+		l.readChar()
 	}
+}
 
-	l.readChar()
-
+func (l *Lexer) readLiteral() Token {
+	var t Token
+	switch l.ch {
+	case 't':
+		for _, c := range True[1:] {
+			if c != rune(l.peek()) {
+				return Token{Type: Illegal, Literal: ""}
+			}
+			l.readChar()
+		}
+		t = Token{Type: True, Literal: string(True)}
+	case 'f':
+		for _, c := range False[1:] {
+			if c != rune(l.peek()) {
+				return Token{Type: Illegal, Literal: ""}
+			}
+			l.readChar()
+		}
+		t = Token{Type: False, Literal: string(False)}
+	case 'n':
+		for _, c := range Null[1:] {
+			if c != rune(l.peek()) {
+				return Token{Type: Illegal, Literal: ""}
+			}
+			l.readChar()
+		}
+		t = Token{Type: Null, Literal: string(Null)}
+	}
 	return t
+}
+
+func (l *Lexer) isLiteral(ch byte) bool {
+	return ch == 't' || ch == 'f' || ch == 'n'
 }
 
 func (l *Lexer) isNumber(ch byte) bool {
@@ -72,7 +135,7 @@ func (l *Lexer) readNumber() Token {
 		l.readChar()
 	}
 
-	return Token{Type: NUMBER, Literal: l.input[position:l.readPosition]}
+	return Token{Type: Number, Literal: l.input[position:l.readPosition]}
 }
 
 func (l *Lexer) readString() Token {
@@ -82,12 +145,12 @@ func (l *Lexer) readString() Token {
 	for {
 		l.readChar()
 		if l.ch == '"' {
-			t = Token{Type: STRING, Literal: l.input[position:l.position]}
+			t = Token{Type: String, Literal: l.input[position:l.position]}
 			break
 		}
 		if l.ch == 0 {
 			if l.input[l.position-1] != '"' {
-				t = Token{Type: ILLEGAL, Literal: l.input[position:l.position]}
+				t = Token{Type: Illegal, Literal: l.input[position:l.position]}
 			}
 			break
 		}
@@ -111,13 +174,6 @@ func (l *Lexer) peek() byte {
 		return 0
 	}
 	return l.input[l.readPosition]
-}
-
-func (l *Lexer) prev() byte {
-	if l.readPosition >= len(l.input) {
-		return 0
-	}
-	return l.input[l.readPosition-1]
 }
 
 func (l *Lexer) skipWhiteSpace() {
