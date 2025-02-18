@@ -1,5 +1,16 @@
 package internal
 
+import "fmt"
+
+// TokenError holds the error for when a token is illegal
+type TokenError struct {
+	msg, arg string
+}
+
+func (t *TokenError) Error() string {
+	return fmt.Sprintf("%s %s", t.msg, t.arg)
+}
+
 // TokenType is a string.
 type TokenType string
 
@@ -56,7 +67,7 @@ func NewLexer(input string) *Lexer {
 }
 
 // ValidateTokens returns the next token.
-func (l *Lexer) ValidateTokens() {
+func (l *Lexer) ValidateTokens() error {
 	idx := 0
 	for ; idx < len(l.input); idx++ {
 		l.skipWhiteSpace()
@@ -66,7 +77,10 @@ func (l *Lexer) ValidateTokens() {
 			l.Tokens = append(l.Tokens, Token{Literal: string(l.ch), Type: OpeningCurly})
 		case '}':
 			if l.Tokens[idx-1].Type == Comma {
-				l.Tokens[idx-1].Type = Illegal
+				return fmt.Errorf(
+					"Character \"%s\" is not valid in the given position",
+					l.Tokens[idx-1].Literal,
+				)
 			}
 			l.Tokens = append(l.Tokens, Token{Literal: string(l.ch), Type: ClosingCurly})
 		case ':':
@@ -75,27 +89,35 @@ func (l *Lexer) ValidateTokens() {
 			l.Tokens = append(l.Tokens, Token{Literal: string(l.ch), Type: Comma})
 		case '"':
 			l.Tokens = append(l.Tokens, l.readString())
+		case 0:
+			return nil
 		default:
 			if l.isNumber(l.ch) || l.ch == '-' {
 				l.Tokens = append(l.Tokens, l.readNumber())
 			} else if l.isLiteral(l.ch) {
-				l.Tokens = append(l.Tokens, l.readLiteral())
+				literal, err := l.readLiteral()
+				if err != nil {
+					return err
+				}
+				l.Tokens = append(l.Tokens, *literal)
 			} else {
-				l.Tokens = append(l.Tokens, Token{Literal: "", Type: Illegal})
+				return fmt.Errorf("Character \"%s\" is not valid", string(l.ch))
 			}
 		}
 
 		l.readChar()
 	}
+
+	return nil
 }
 
-func (l *Lexer) readLiteral() Token {
+func (l *Lexer) readLiteral() (*Token, error) {
 	var t Token
 	switch l.ch {
 	case 't':
 		for _, c := range True[1:] {
 			if c != rune(l.peek()) {
-				return Token{Type: Illegal, Literal: ""}
+				return nil, &TokenError{arg: string(l.peek()), msg: "Character was not true"}
 			}
 			l.readChar()
 		}
@@ -103,7 +125,7 @@ func (l *Lexer) readLiteral() Token {
 	case 'f':
 		for _, c := range False[1:] {
 			if c != rune(l.peek()) {
-				return Token{Type: Illegal, Literal: ""}
+				return nil, &TokenError{arg: string(l.peek()), msg: "Character was not false"}
 			}
 			l.readChar()
 		}
@@ -111,13 +133,13 @@ func (l *Lexer) readLiteral() Token {
 	case 'n':
 		for _, c := range Null[1:] {
 			if c != rune(l.peek()) {
-				return Token{Type: Illegal, Literal: ""}
+				return nil, &TokenError{arg: string(l.peek()), msg: "Character was not null"}
 			}
 			l.readChar()
 		}
 		t = Token{Type: Null, Literal: string(Null)}
 	}
-	return t
+	return &t, nil
 }
 
 func (l *Lexer) isLiteral(ch byte) bool {
@@ -174,6 +196,10 @@ func (l *Lexer) peek() byte {
 		return 0
 	}
 	return l.input[l.readPosition]
+}
+
+func (l *Lexer) isWhiteSpace(ch1, ch2 byte) bool {
+	return ch1 == ' ' || (ch1 == '\\' && (ch2 == 't' || ch2 == 'n' || ch2 == 'r'))
 }
 
 func (l *Lexer) skipWhiteSpace() {

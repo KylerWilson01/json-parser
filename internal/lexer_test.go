@@ -1,10 +1,37 @@
 package internal_test
 
 import (
+	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/KylerWilson01/json-parser/internal"
 )
+
+func TestLexerErrors(t *testing.T) {
+	tests := []struct {
+		name, input string
+		expected    error
+	}{
+		{
+			"Illegal Number", `42false`, &internal.TokenError{},
+		},
+		{
+			"Invalid key value object", "{\"key\": \"value\",}", &internal.TokenError{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			l := internal.NewLexer(tt.input)
+			err := l.ValidateTokens()
+			fmt.Println(err)
+			if !errors.Is(err, tt.expected) {
+				t.Fail()
+			}
+		})
+	}
+}
 
 func TestLexer(t *testing.T) {
 	tests := []struct {
@@ -25,12 +52,6 @@ func TestLexer(t *testing.T) {
 			},
 		},
 		{
-			"Illegal Number", `42f`, []internal.Token{
-				{Literal: "42", Type: internal.Number},
-				{Literal: "", Type: internal.Illegal},
-			},
-		},
-		{
 			"Simple object", "{}", []internal.Token{
 				{Literal: "{", Type: internal.OpeningCurly},
 				{Literal: "}", Type: internal.ClosingCurly},
@@ -42,16 +63,6 @@ func TestLexer(t *testing.T) {
 				{Literal: "key", Type: internal.String},
 				{Literal: ":", Type: internal.Colon},
 				{Literal: "value", Type: internal.String},
-				{Literal: "}", Type: internal.ClosingCurly},
-			},
-		},
-		{
-			"Invalid key value object", "{\"key\": \"value\",}", []internal.Token{
-				{Literal: "{", Type: internal.OpeningCurly},
-				{Literal: "key", Type: internal.String},
-				{Literal: ":", Type: internal.Colon},
-				{Literal: "value", Type: internal.String},
-				{Literal: ",", Type: internal.Illegal},
 				{Literal: "}", Type: internal.ClosingCurly},
 			},
 		},
@@ -86,7 +97,11 @@ func TestLexer(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			l := internal.NewLexer(tt.input)
-			l.ValidateTokens()
+			err := l.ValidateTokens()
+			if err != nil {
+				t.Fail()
+			}
+
 			for i, expected := range tt.expected {
 				actual := l.Tokens[i]
 				if actual.Type != expected.Type || actual.Literal != expected.Literal {
