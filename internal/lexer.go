@@ -1,6 +1,8 @@
 package internal
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // TokenError holds the error for when a token is illegal
 type TokenError struct {
@@ -14,10 +16,14 @@ func (t *TokenError) Error() string {
 // TokenType is a string.
 type TokenType string
 
+// TokenState is a string.
+type TokenState string
+
 // Token holds what a token should represent.
 type Token struct {
 	Type    TokenType
 	Literal string
+	State   *TokenState
 }
 
 // Lexer is what we use to make sure that all Tokens are valid.
@@ -26,8 +32,26 @@ type Lexer struct {
 	position     int
 	readPosition int
 	ch           byte
+	state        *Stack[TokenState]
 	Tokens       []Token
 }
+
+var (
+	// Invalid state
+	Invalid TokenState = "Invalid"
+	// StartObject state
+	StartObject TokenState = "StartObject"
+	// EndObject state
+	EndObject TokenState = "EndObject"
+	// StartArray state
+	StartArray TokenState = "StartArray"
+	// EndArray state
+	EndArray TokenState = "EndArray"
+	// InsideObject state
+	InsideObject TokenState = "InsideObject"
+	// InsideArray state
+	InsideArray TokenState = "InsideArray"
+)
 
 const (
 	// Illegal shows that the token is not valid
@@ -61,7 +85,7 @@ const (
 
 // NewLexer creates a pointer to a Lexer.
 func NewLexer(input string) *Lexer {
-	l := Lexer{input: input}
+	l := Lexer{input: input, state: NewStack[TokenState]()}
 	l.readChar()
 	return &l
 }
@@ -74,22 +98,56 @@ func (l *Lexer) ValidateTokens() error {
 
 		switch l.ch {
 		case '{':
-			l.Tokens = append(l.Tokens, Token{Literal: string(l.ch), Type: OpeningCurly})
+			l.Tokens = append(
+				l.Tokens,
+				Token{
+					Literal: string(l.ch),
+					Type:    OpeningCurly,
+					State:   &StartObject,
+				},
+			)
+			l.state.Push(InsideObject)
 		case '}':
-			if l.Tokens[idx-1].Type == Comma {
-				return fmt.Errorf(
-					"Character \"%s\" is not valid in the given position",
-					l.Tokens[idx-1].Literal,
-				)
+			if s := l.state.Pop(); s != nil && *s != InsideObject {
+				return &TokenError{"Should be inside an object. Instead got", string(*s)}
 			}
-			l.Tokens = append(l.Tokens, Token{Literal: string(l.ch), Type: ClosingCurly})
+			l.Tokens = append(
+				l.Tokens,
+				Token{Literal: string(l.ch), Type: ClosingCurly, State: &EndObject},
+			)
+		case '[':
+			l.Tokens = append(
+				l.Tokens,
+				Token{Literal: string(l.ch), Type: OpeningBracket, State: &StartArray},
+			)
+			l.state.Push(InsideArray)
+		case ']':
+			if s := l.state.Pop(); s != nil && *s != InsideArray {
+				return &TokenError{"Should be inside an object. Instead got", string(*s)}
+			}
+			l.Tokens = append(
+				l.Tokens,
+				Token{Literal: string(l.ch), Type: CloseingBracket, State: &EndArray},
+			)
 		case ':':
-			l.Tokens = append(l.Tokens, Token{Literal: string(l.ch), Type: Colon})
+			l.Tokens = append(
+				l.Tokens,
+				Token{Literal: string(l.ch), Type: Colon, State: l.state.Peek()},
+			)
 		case ',':
-			l.Tokens = append(l.Tokens, Token{Literal: string(l.ch), Type: Comma})
+			l.Tokens = append(
+				l.Tokens,
+				Token{Literal: string(l.ch), Type: Comma, State: l.state.Peek()},
+			)
 		case '"':
 			l.Tokens = append(l.Tokens, l.readString())
 		case 0:
+			if len(l.state.state) != 0 {
+				return fmt.Errorf(
+					"Length of the state should be 0. Instead got %d",
+					len(l.state.state),
+				)
+			}
 			return nil
 		default:
 			if l.isNumber(l.ch) || l.ch == '-' {
@@ -101,7 +159,7 @@ func (l *Lexer) ValidateTokens() error {
 				}
 				l.Tokens = append(l.Tokens, *literal)
 			} else {
-				return fmt.Errorf("Character \"%s\" is not valid", string(l.ch))
+				return &TokenError{"Not a legal token", string(l.ch)}
 			}
 		}
 
@@ -121,7 +179,7 @@ func (l *Lexer) readLiteral() (*Token, error) {
 			}
 			l.readChar()
 		}
-		t = Token{Type: True, Literal: string(True)}
+		t = Token{Type: True, Literal: string(True), State: l.state.Peek()}
 	case 'f':
 		for _, c := range False[1:] {
 			if c != rune(l.peek()) {
@@ -129,7 +187,7 @@ func (l *Lexer) readLiteral() (*Token, error) {
 			}
 			l.readChar()
 		}
-		t = Token{Type: False, Literal: string(False)}
+		t = Token{Type: False, Literal: string(False), State: l.state.Peek()}
 	case 'n':
 		for _, c := range Null[1:] {
 			if c != rune(l.peek()) {
@@ -137,7 +195,7 @@ func (l *Lexer) readLiteral() (*Token, error) {
 			}
 			l.readChar()
 		}
-		t = Token{Type: Null, Literal: string(Null)}
+		t = Token{Type: Null, Literal: string(Null), State: l.state.Peek()}
 	}
 	return &t, nil
 }
@@ -157,7 +215,7 @@ func (l *Lexer) readNumber() Token {
 		l.readChar()
 	}
 
-	return Token{Type: Number, Literal: l.input[position:l.readPosition]}
+	return Token{Type: Number, Literal: l.input[position:l.readPosition], State: l.state.Peek()}
 }
 
 func (l *Lexer) readString() Token {
@@ -167,12 +225,12 @@ func (l *Lexer) readString() Token {
 	for {
 		l.readChar()
 		if l.ch == '"' {
-			t = Token{Type: String, Literal: l.input[position:l.position]}
+			t = Token{Type: String, Literal: l.input[position:l.position], State: l.state.Peek()}
 			break
 		}
 		if l.ch == 0 {
 			if l.input[l.position-1] != '"' {
-				t = Token{Type: Illegal, Literal: l.input[position:l.position]}
+				t = Token{Type: Illegal, Literal: l.input[position:l.position], State: &Invalid}
 			}
 			break
 		}

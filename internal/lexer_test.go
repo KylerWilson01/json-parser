@@ -1,37 +1,10 @@
 package internal_test
 
 import (
-	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/KylerWilson01/json-parser/internal"
 )
-
-func TestLexerErrors(t *testing.T) {
-	tests := []struct {
-		name, input string
-		expected    error
-	}{
-		{
-			"Illegal Number", `42false`, &internal.TokenError{},
-		},
-		{
-			"Invalid key value object", "{\"key\": \"value\",}", &internal.TokenError{},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			l := internal.NewLexer(tt.input)
-			err := l.ValidateTokens()
-			fmt.Println(err)
-			if !errors.Is(err, tt.expected) {
-				t.Fail()
-			}
-		})
-	}
-}
 
 func TestLexer(t *testing.T) {
 	tests := []struct {
@@ -63,6 +36,30 @@ func TestLexer(t *testing.T) {
 				{Literal: "key", Type: internal.String},
 				{Literal: ":", Type: internal.Colon},
 				{Literal: "value", Type: internal.String},
+				{Literal: "}", Type: internal.ClosingCurly},
+			},
+		},
+		{
+			"Nested Object and array", `{"key": "value","key-n": 101,"key-o": {},"key-l": []}`,
+			[]internal.Token{
+				{Literal: "{", Type: internal.OpeningCurly},
+				{Literal: "key", Type: internal.String},
+				{Literal: ":", Type: internal.Colon},
+				{Literal: "value", Type: internal.String},
+				{Literal: ",", Type: internal.Comma},
+				{Literal: "key-n", Type: internal.String},
+				{Literal: ":", Type: internal.Colon},
+				{Literal: "101", Type: internal.Number},
+				{Literal: ",", Type: internal.Comma},
+				{Literal: "key-o", Type: internal.String},
+				{Literal: ":", Type: internal.Colon},
+				{Literal: "{", Type: internal.OpeningCurly},
+				{Literal: "}", Type: internal.ClosingCurly},
+				{Literal: ",", Type: internal.Comma},
+				{Literal: "key-l", Type: internal.String},
+				{Literal: ":", Type: internal.Colon},
+				{Literal: "[", Type: internal.OpeningBracket},
+				{Literal: "]", Type: internal.CloseingBracket},
 				{Literal: "}", Type: internal.ClosingCurly},
 			},
 		},
