@@ -23,7 +23,7 @@ type TokenState string
 type Token struct {
 	Type    TokenType
 	Literal string
-	State   *TokenState
+	State   TokenState
 }
 
 // Lexer is what we use to make sure that all Tokens are valid.
@@ -103,41 +103,41 @@ func (l *Lexer) ValidateTokens() error {
 				Token{
 					Literal: string(l.ch),
 					Type:    OpeningCurly,
-					State:   &StartObject,
+					State:   StartObject,
 				},
 			)
 			l.state.Push(InsideObject)
 		case '}':
-			if s := l.state.Pop(); s != nil && *s != InsideObject {
-				return &TokenError{"Should be inside an object. Instead got", string(*s)}
+			if s := l.state.Pop(); s != InsideObject {
+				return &TokenError{"Should be inside an object. Instead got", string(s)}
 			}
 			l.Tokens = append(
 				l.Tokens,
-				Token{Literal: string(l.ch), Type: ClosingCurly, State: &EndObject},
+				Token{Literal: string(l.ch), Type: ClosingCurly, State: EndObject},
 			)
 		case '[':
 			l.Tokens = append(
 				l.Tokens,
-				Token{Literal: string(l.ch), Type: OpeningBracket, State: &StartArray},
+				Token{Literal: string(l.ch), Type: OpeningBracket, State: StartArray},
 			)
 			l.state.Push(InsideArray)
 		case ']':
-			if s := l.state.Pop(); s != nil && *s != InsideArray {
-				return &TokenError{"Should be inside an object. Instead got", string(*s)}
+			if s := l.state.Pop(); s != InsideArray {
+				return &TokenError{"Should be inside an object. Instead got", string(s)}
 			}
 			l.Tokens = append(
 				l.Tokens,
-				Token{Literal: string(l.ch), Type: CloseingBracket, State: &EndArray},
+				Token{Literal: string(l.ch), Type: CloseingBracket, State: EndArray},
 			)
 		case ':':
 			l.Tokens = append(
 				l.Tokens,
-				Token{Literal: string(l.ch), Type: Colon, State: l.state.Peek()},
+				Token{Literal: string(l.ch), Type: Colon, State: l.findState()},
 			)
 		case ',':
 			l.Tokens = append(
 				l.Tokens,
-				Token{Literal: string(l.ch), Type: Comma, State: l.state.Peek()},
+				Token{Literal: string(l.ch), Type: Comma, State: l.findState()},
 			)
 		case '"':
 			l.Tokens = append(l.Tokens, l.readString())
@@ -179,7 +179,7 @@ func (l *Lexer) readLiteral() (*Token, error) {
 			}
 			l.readChar()
 		}
-		t = Token{Type: True, Literal: string(True), State: l.state.Peek()}
+		t = Token{Type: True, Literal: string(True), State: l.findState()}
 	case 'f':
 		for _, c := range False[1:] {
 			if c != rune(l.peek()) {
@@ -187,7 +187,7 @@ func (l *Lexer) readLiteral() (*Token, error) {
 			}
 			l.readChar()
 		}
-		t = Token{Type: False, Literal: string(False), State: l.state.Peek()}
+		t = Token{Type: False, Literal: string(False), State: l.findState()}
 	case 'n':
 		for _, c := range Null[1:] {
 			if c != rune(l.peek()) {
@@ -195,7 +195,7 @@ func (l *Lexer) readLiteral() (*Token, error) {
 			}
 			l.readChar()
 		}
-		t = Token{Type: Null, Literal: string(Null), State: l.state.Peek()}
+		t = Token{Type: Null, Literal: string(Null), State: l.findState()}
 	}
 	return &t, nil
 }
@@ -211,11 +211,18 @@ func (l *Lexer) isNumber(ch byte) bool {
 func (l *Lexer) readNumber() Token {
 	position := l.position
 
-	for l.isNumber(l.peek()) || l.peek() == '.' || l.peek() == '-' {
-		l.readChar()
+	for {
+		if l.isNumber(l.peek()) || l.peek() == '.' || l.peek() == '-' || l.peek() == 'e' ||
+			l.peek() == 'E' {
+			l.readChar()
+		} else if l.ch == 0 {
+			return Token{Type: Illegal, Literal: string(l.ch), State: l.findState()}
+		} else {
+			break
+		}
 	}
 
-	return Token{Type: Number, Literal: l.input[position:l.readPosition], State: l.state.Peek()}
+	return Token{Type: Number, Literal: l.input[position:l.readPosition], State: l.findState()}
 }
 
 func (l *Lexer) readString() Token {
@@ -225,12 +232,12 @@ func (l *Lexer) readString() Token {
 	for {
 		l.readChar()
 		if l.ch == '"' {
-			t = Token{Type: String, Literal: l.input[position:l.position], State: l.state.Peek()}
+			t = Token{Type: String, Literal: l.input[position:l.position], State: l.findState()}
 			break
 		}
 		if l.ch == 0 {
 			if l.input[l.position-1] != '"' {
-				t = Token{Type: Illegal, Literal: l.input[position:l.position], State: &Invalid}
+				t = Token{Type: Illegal, Literal: l.input[position:l.position], State: Invalid}
 			}
 			break
 		}
@@ -262,10 +269,11 @@ func (l *Lexer) isWhiteSpace(ch1, ch2 byte) bool {
 
 func (l *Lexer) skipWhiteSpace() {
 	for {
-		if l.ch == ' ' {
+		if l.ch == ' ' || l.ch == '\t' || l.ch == '\n' || l.ch == '\r' {
 			l.readChar()
 			continue
 		}
+
 		if l.ch == '\\' && (l.peek() == 't' || l.peek() == 'n' || l.peek() == 'r') {
 			l.readChar()
 			l.readChar()
@@ -273,4 +281,12 @@ func (l *Lexer) skipWhiteSpace() {
 		}
 		break
 	}
+}
+
+func (l *Lexer) findState() TokenState {
+	if l.state.IsEmpty() {
+		return Invalid
+	}
+
+	return l.state.Peek()
 }

@@ -2,33 +2,34 @@ package internal
 
 import "fmt"
 
+// Parser is used to parse the given tokens
 type Parser struct {
 	tokens []Token
 }
 
+// NewParser creates a new parser
 func NewParser(t []Token) *Parser {
 	p := &Parser{}
 	p.tokens = t
 	return p
 }
 
+// ParseTokens loops through all the tokens to make sure it's valid
 func (p *Parser) ParseTokens() (bool, error) {
 	var e error
 	result := false
 	s := NewStack[TokenState]()
 	for i, t := range p.tokens {
-		if t.State == &StartArray || t.State == &StartObject {
+		if t.State == StartArray || t.State == StartObject {
+			fmt.Printf("%v \n", t.State)
 			result = false
 			e = fmt.Errorf("Start without an end")
-			s.Push(*t.State)
+			s.Push(t.State)
 			continue
 		}
 
-		if s.Peek() == nil {
-			return false, fmt.Errorf("Empty stack")
-		}
-
-		if *t.State == EndObject && *s.Pop() == StartObject {
+		if t.State == EndObject && s.Pop() == StartObject {
+			fmt.Printf("%v \n", t.State)
 			if p.tokens[i-1].Type == Comma {
 				result = false
 				return result, fmt.Errorf("Comma is in an invalid place")
@@ -38,7 +39,8 @@ func (p *Parser) ParseTokens() (bool, error) {
 			continue
 		}
 
-		if *t.State == EndArray && *s.Pop() == StartArray {
+		if t.State == EndArray && s.Pop() == StartArray {
+			fmt.Printf("%v \n", t.State)
 			if p.tokens[i-1].Type == Comma {
 				result = false
 				return result, fmt.Errorf("Comma is in an invalid place")
