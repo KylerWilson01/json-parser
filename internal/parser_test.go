@@ -1,7 +1,8 @@
 package internal_test
 
 import (
-	"fmt"
+	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/KylerWilson01/json-parser/internal"
@@ -13,61 +14,59 @@ func TestParseTokens_Valid(t *testing.T) {
 		tokenList    []internal.Token
 		expectedBool bool
 	}{
-		/*
-			{
-				name: "Valid string json",
-				tokenList: func() []internal.Token {
-					l := internal.NewLexer(`{"name":"ayo"}`)
-					err := l.ValidateTokens()
-					if err != nil {
-						return []internal.Token{}
-					}
-					return l.Tokens
-				}(),
-				expectedBool: true,
-			},
-			{
-				name: "Valid num json",
-				tokenList: func() []internal.Token {
-					l := internal.NewLexer(`{
+		{
+			name: "Valid string json",
+			tokenList: func() []internal.Token {
+				l := internal.NewLexer(`{"name":"ayo"}`)
+				err := l.ValidateTokens()
+				if err != nil {
+					return []internal.Token{}
+				}
+				return l.Tokens
+			}(),
+			expectedBool: true,
+		},
+		{
+			name: "Valid num json",
+			tokenList: func() []internal.Token {
+				l := internal.NewLexer(`{
 						  "num1": 123,
 						  "num2": 987
 						}`)
-					err := l.ValidateTokens()
-					if err != nil {
-						return []internal.Token{}
-					}
-					return l.Tokens
-				}(),
-				expectedBool: true,
-			},
-			{
-				name: "Valid array json with string at idx 0",
-				tokenList: func() []internal.Token {
-					l := internal.NewLexer(`{
+				err := l.ValidateTokens()
+				if err != nil {
+					return []internal.Token{}
+				}
+				return l.Tokens
+			}(),
+			expectedBool: true,
+		},
+		{
+			name: "Valid array json with string at idx 0",
+			tokenList: func() []internal.Token {
+				l := internal.NewLexer(`{
 						  "array": ["testing", "hello", 123, {"name":"hello"}]
 						}`)
-					err := l.ValidateTokens()
-					if err != nil {
-						return []internal.Token{}
-					}
-					return l.Tokens
-				}(),
-				expectedBool: true,
-			},
-			{
-				name: "simple empty object",
-				tokenList: func() []internal.Token {
-					l := internal.NewLexer(`{}`)
-					err := l.ValidateTokens()
-					if err != nil {
-						return []internal.Token{}
-					}
-					return l.Tokens
-				}(),
-				expectedBool: true,
-			},
-		*/
+				err := l.ValidateTokens()
+				if err != nil {
+					return []internal.Token{}
+				}
+				return l.Tokens
+			}(),
+			expectedBool: true,
+		},
+		{
+			name: "simple empty object",
+			tokenList: func() []internal.Token {
+				l := internal.NewLexer(`{}`)
+				err := l.ValidateTokens()
+				if err != nil {
+					return []internal.Token{}
+				}
+				return l.Tokens
+			}(),
+			expectedBool: true,
+		},
 		{
 			name: "big complicated array",
 			tokenList: func() []internal.Token {
@@ -139,43 +138,39 @@ func TestParseTokens_Valid(t *testing.T) {
 			}(),
 			expectedBool: true,
 		},
-		/*
-			{
-				name: "deeply nested array",
-				tokenList: func() []internal.Token {
-					l := internal.NewLexer(`[[[[[[[[[[[[[[[[[[["Not too deep"]]]]]]]]]]]]]]]]]]]`)
-					err := l.ValidateTokens()
-					if err != nil {
-						return []internal.Token{}
-					}
-					return l.Tokens
-				}(),
-				expectedBool: true,
-			},
-			{
-				name: "nested json",
-				tokenList: func() []internal.Token {
-					l := internal.NewLexer(`
+		{
+			name: "deeply nested array",
+			tokenList: func() []internal.Token {
+				l := internal.NewLexer(`[[[[[[[[[[[[[[[[[[["Not too deep"]]]]]]]]]]]]]]]]]]]`)
+				err := l.ValidateTokens()
+				if err != nil {
+					return []internal.Token{}
+				}
+				return l.Tokens
+			}(),
+			expectedBool: true,
+		},
+		{
+			name: "nested json",
+			tokenList: func() []internal.Token {
+				l := internal.NewLexer(`
 					{
 						"JSON Test Pattern pass3": {
 							"The outermost value": "must be an object or array.",
 							"In this test": "It is an object."
 						}
 					}`)
-					err := l.ValidateTokens()
-					if err != nil {
-						return []internal.Token{}
-					}
-					return l.Tokens
-				}(),
-				expectedBool: true,
-			},
-		*/
+				err := l.ValidateTokens()
+				if err != nil {
+					return []internal.Token{}
+				}
+				return l.Tokens
+			}(),
+			expectedBool: true,
+		},
 	}
 	for _, tc := range testCases {
-		fmt.Println(tc.name)
 		p := internal.NewParser(tc.tokenList)
-		fmt.Println(p)
 		actualBool, err := p.ParseTokens()
 		if actualBool != tc.expectedBool {
 			t.Errorf("expected: %v, got: %v. details: %v", tc.expectedBool, actualBool, err)
@@ -183,7 +178,6 @@ func TestParseTokens_Valid(t *testing.T) {
 	}
 }
 
-/*
 func TestParseTokens_Invalid(t *testing.T) {
 	testCases := []struct {
 		name         string
@@ -315,14 +309,13 @@ func TestParseTokens_Invalid(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		p := internal.NewParser(tc.tokenList)
-		actualBool, _ := p.ParseTokens()
+		actualBool, err := p.ParseTokens()
 		if !reflect.DeepEqual(actualBool, tc.expectedBool) {
 			t.Errorf("expected: %v, got: %v.", tc.expectedBool, actualBool)
 		}
 
-			if !strings.Contains(err.Error(), tc.errStr) {
-				t.Errorf("expected: %v, got: %v.", tc.errStr, err.Error())
-			}
+		if !strings.Contains(err.Error(), tc.errStr) {
+			t.Errorf("expected: %v, got: %v.", tc.errStr, err.Error())
+		}
 	}
 }
-*/

@@ -212,11 +212,10 @@ func (l *Lexer) readNumber() Token {
 	position := l.position
 
 	for {
-		if l.isNumber(l.peek()) || l.peek() == '.' || l.peek() == '-' || l.peek() == 'e' ||
-			l.peek() == 'E' {
+		if l.isNumber(l.peek()) || l.peek() == '.' || l.peek() == '-' || l.peek() == '+' {
 			l.readChar()
-		} else if l.ch == 0 {
-			return Token{Type: Illegal, Literal: string(l.ch), State: l.findState()}
+		} else if l.peek() == 'e' || l.peek() == 'E' {
+			l.readChar()
 		} else {
 			break
 		}
@@ -231,11 +230,21 @@ func (l *Lexer) readString() Token {
 
 	for {
 		l.readChar()
-		if l.ch == '"' {
+		if l.prev() == '\\' {
+			if l.ch == '"' || l.ch == '\\' || l.ch == '/' || l.ch == 'b' ||
+				l.peek() == 'f' ||
+				l.peek() == 'n' ||
+				l.peek() == 'r' ||
+				l.peek() == 't' {
+				l.readChar()
+				continue
+			}
+
+			return Token{Type: Illegal, Literal: l.input[position:l.position], State: Invalid}
+		} else if l.ch == '"' {
 			t = Token{Type: String, Literal: l.input[position:l.position], State: l.findState()}
 			break
-		}
-		if l.ch == 0 {
+		} else if l.ch == 0 {
 			if l.input[l.position-1] != '"' {
 				t = Token{Type: Illegal, Literal: l.input[position:l.position], State: Invalid}
 			}
@@ -261,6 +270,13 @@ func (l *Lexer) peek() byte {
 		return 0
 	}
 	return l.input[l.readPosition]
+}
+
+func (l *Lexer) prev() byte {
+	if l.readPosition >= len(l.input) {
+		return 0
+	}
+	return l.input[l.readPosition-1]
 }
 
 func (l *Lexer) isWhiteSpace(ch1, ch2 byte) bool {

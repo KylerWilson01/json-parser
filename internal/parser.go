@@ -21,7 +21,6 @@ func (p *Parser) ParseTokens() (bool, error) {
 	s := NewStack[TokenState]()
 	for i, t := range p.tokens {
 		if t.State == StartArray || t.State == StartObject {
-			fmt.Printf("%v \n", t.State)
 			result = false
 			e = fmt.Errorf("Start without an end")
 			s.Push(t.State)
@@ -29,7 +28,6 @@ func (p *Parser) ParseTokens() (bool, error) {
 		}
 
 		if t.State == EndObject && s.Pop() == StartObject {
-			fmt.Printf("%v \n", t.State)
 			if p.tokens[i-1].Type == Comma {
 				result = false
 				return result, fmt.Errorf("Comma is in an invalid place")
@@ -40,7 +38,6 @@ func (p *Parser) ParseTokens() (bool, error) {
 		}
 
 		if t.State == EndArray && s.Pop() == StartArray {
-			fmt.Printf("%v \n", t.State)
 			if p.tokens[i-1].Type == Comma {
 				result = false
 				return result, fmt.Errorf("Comma is in an invalid place")
