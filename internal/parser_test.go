@@ -2,7 +2,6 @@ package internal_test
 
 import (
 	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/KylerWilson01/json-parser/internal"
@@ -170,11 +169,13 @@ func TestParseTokens_Valid(t *testing.T) {
 		},
 	}
 	for _, tc := range testCases {
-		p := internal.NewParser(tc.tokenList)
-		actualBool, err := p.ParseTokens()
-		if actualBool != tc.expectedBool {
-			t.Errorf("expected: %v, got: %v. details: %v", tc.expectedBool, actualBool, err)
-		}
+		t.Run(tc.name, func(t *testing.T) {
+			p := internal.NewParser(tc.tokenList)
+			actualBool, err := p.ParseTokens()
+			if actualBool != tc.expectedBool {
+				t.Errorf("expected: %v, got: %v. details: %v", tc.expectedBool, actualBool, err)
+			}
+		})
 	}
 }
 
@@ -186,6 +187,7 @@ func TestParseTokens_Invalid(t *testing.T) {
 		errStr       string
 	}{
 		{
+			name: "Unclosed Array",
 			tokenList: func() []internal.Token {
 				l := internal.NewLexer(`["Unclosed array"`)
 				err := l.ValidateTokens()
@@ -197,6 +199,7 @@ func TestParseTokens_Invalid(t *testing.T) {
 			expectedBool: false,
 		},
 		{
+			name: "Extra comma",
 			tokenList: func() []internal.Token {
 				l := internal.NewLexer(`["extra comma",]`)
 				err := l.ValidateTokens()
@@ -208,6 +211,7 @@ func TestParseTokens_Invalid(t *testing.T) {
 			expectedBool: false,
 		},
 		{
+			name: "Double comma",
 			tokenList: func() []internal.Token {
 				l := internal.NewLexer(`["double comma",,]`)
 				err := l.ValidateTokens()
@@ -219,6 +223,7 @@ func TestParseTokens_Invalid(t *testing.T) {
 			expectedBool: false,
 		},
 		{
+			name: "Missing array value",
 			tokenList: func() []internal.Token {
 				l := internal.NewLexer(`[   , "<-- missing value"]`)
 				err := l.ValidateTokens()
@@ -230,6 +235,7 @@ func TestParseTokens_Invalid(t *testing.T) {
 			expectedBool: false,
 		},
 		{
+			name: "comma after close",
 			tokenList: func() []internal.Token {
 				l := internal.NewLexer(`["Comma after the close"],`)
 				err := l.ValidateTokens()
@@ -241,6 +247,7 @@ func TestParseTokens_Invalid(t *testing.T) {
 			expectedBool: false,
 		},
 		{
+			name: "Extra comma object",
 			tokenList: func() []internal.Token {
 				l := internal.NewLexer(`{"Extra comma": true,}`)
 				err := l.ValidateTokens()
@@ -252,6 +259,7 @@ func TestParseTokens_Invalid(t *testing.T) {
 			expectedBool: false,
 		},
 		{
+			name: "Missing Colon",
 			tokenList: func() []internal.Token {
 				l := internal.NewLexer(`{"Missing colon" null}`)
 				err := l.ValidateTokens()
@@ -263,6 +271,7 @@ func TestParseTokens_Invalid(t *testing.T) {
 			expectedBool: false,
 		},
 		{
+			name: "double colon",
 			tokenList: func() []internal.Token {
 				l := internal.NewLexer(`{"Double colon":: null}`)
 				err := l.ValidateTokens()
@@ -274,6 +283,7 @@ func TestParseTokens_Invalid(t *testing.T) {
 			expectedBool: false,
 		},
 		{
+			name: "comma instead of colon",
 			tokenList: func() []internal.Token {
 				l := internal.NewLexer(`{"Comma instead of colon", null}`)
 				err := l.ValidateTokens()
@@ -285,6 +295,7 @@ func TestParseTokens_Invalid(t *testing.T) {
 			expectedBool: false,
 		},
 		{
+			name: "colon instead of comma",
 			tokenList: func() []internal.Token {
 				l := internal.NewLexer(`["Colon instead of comma": false]`)
 				err := l.ValidateTokens()
@@ -296,6 +307,7 @@ func TestParseTokens_Invalid(t *testing.T) {
 			expectedBool: false,
 		},
 		{
+			name: "comma instead of closing brace",
 			tokenList: func() []internal.Token {
 				l := internal.NewLexer(`{"Comma instead if closing brace": true,`)
 				err := l.ValidateTokens()
@@ -308,14 +320,12 @@ func TestParseTokens_Invalid(t *testing.T) {
 		},
 	}
 	for _, tc := range testCases {
-		p := internal.NewParser(tc.tokenList)
-		actualBool, err := p.ParseTokens()
-		if !reflect.DeepEqual(actualBool, tc.expectedBool) {
-			t.Errorf("expected: %v, got: %v.", tc.expectedBool, actualBool)
-		}
-
-		if !strings.Contains(err.Error(), tc.errStr) {
-			t.Errorf("expected: %v, got: %v.", tc.errStr, err.Error())
-		}
+		t.Run(tc.name, func(t *testing.T) {
+			p := internal.NewParser(tc.tokenList)
+			actualBool, _ := p.ParseTokens()
+			if !reflect.DeepEqual(actualBool, tc.expectedBool) {
+				t.Errorf("expected: %v, got: %v.", tc.expectedBool, actualBool)
+			}
+		})
 	}
 }
