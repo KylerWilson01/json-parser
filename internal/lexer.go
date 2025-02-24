@@ -36,7 +36,7 @@ type Lexer struct {
 	Tokens       []Token
 }
 
-var (
+const (
 	// Invalid state
 	Invalid TokenState = "Invalid"
 	// StartObject state
@@ -73,8 +73,10 @@ const (
 
 	// Null marks a primitive null
 	Null TokenType = "null"
-	// String marks a primitive string
-	String TokenType = "string"
+	// ValueString marks a primitive string
+	ValueString TokenType = "value string"
+	// NameString marks a primitive string
+	NameString TokenType = "name string"
 	// Number marks a primitive number
 	Number TokenType = "number"
 	// True marks a primitive true boolean
@@ -225,7 +227,6 @@ func (l *Lexer) readNumber() Token {
 }
 
 func (l *Lexer) readString() Token {
-	var t Token
 	position := l.position + 1
 
 	for {
@@ -242,17 +243,32 @@ func (l *Lexer) readString() Token {
 
 			return Token{Type: Illegal, Literal: l.input[position:l.position], State: Invalid}
 		} else if l.ch == '"' {
-			t = Token{Type: String, Literal: l.input[position:l.position], State: l.findState()}
-			break
+			t := Token{Literal: l.input[position:l.position], State: l.findState()}
+			if t.Type == Illegal {
+				return t
+			}
+
+			if len(l.Tokens) == 0 {
+				t.Type = ValueString
+				return t
+			}
+
+			pt := l.Tokens[len(l.Tokens)-1]
+
+			if pt.Type == OpeningCurly || (pt.Type == Comma && l.state.Peek() == InsideObject) {
+				t.Type = NameString
+			} else if l.state.Peek() == InsideArray && (pt.Type == Comma || pt.Type == OpeningBracket) {
+				t.Type = ValueString
+			} else if pt.Type == Colon {
+				t.Type = ValueString
+			}
+			return t
 		} else if l.ch == 0 {
 			if l.input[l.position-1] != '"' {
-				t = Token{Type: Illegal, Literal: l.input[position:l.position], State: Invalid}
+				return Token{Type: Illegal, Literal: l.input[position:l.position], State: Invalid}
 			}
-			break
 		}
 	}
-
-	return t
 }
 
 func (l *Lexer) readChar() {

@@ -322,9 +322,9 @@ func TestParseTokens_Invalid(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			p := internal.NewParser(tc.tokenList)
-			actualBool, _ := p.ParseTokens()
+			actualBool, err := p.ParseTokens()
 			if !reflect.DeepEqual(actualBool, tc.expectedBool) {
-				t.Errorf("expected: %v, got: %v.", tc.expectedBool, actualBool)
+				t.Errorf("expected: %v, got: %v, details: %v", tc.expectedBool, actualBool, err)
 			}
 		})
 	}
