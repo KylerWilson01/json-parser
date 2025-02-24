@@ -63,8 +63,8 @@ const (
 	ClosingCurly TokenType = "}"
 	// OpeningBracket marks the begging of an array
 	OpeningBracket TokenType = "["
-	// CloseingBracket marks the end of an array
-	CloseingBracket TokenType = "]"
+	// ClosingBracket marks the end of an array
+	ClosingBracket TokenType = "]"
 
 	// Colon seperates the key and value
 	Colon TokenType = ":"
@@ -129,7 +129,7 @@ func (l *Lexer) ValidateTokens() error {
 			}
 			l.Tokens = append(
 				l.Tokens,
-				Token{Literal: string(l.ch), Type: CloseingBracket, State: EndArray},
+				Token{Literal: string(l.ch), Type: ClosingBracket, State: EndArray},
 			)
 		case ':':
 			l.Tokens = append(

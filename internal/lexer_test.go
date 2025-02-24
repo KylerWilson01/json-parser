@@ -59,7 +59,7 @@ func TestLexer(t *testing.T) {
 				{Literal: "key-l", Type: internal.NameString},
 				{Literal: ":", Type: internal.Colon},
 				{Literal: "[", Type: internal.OpeningBracket},
-				{Literal: "]", Type: internal.CloseingBracket},
+				{Literal: "]", Type: internal.ClosingBracket},
 				{Literal: "}", Type: internal.ClosingCurly},
 			},
 		},

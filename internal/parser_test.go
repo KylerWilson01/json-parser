@@ -17,10 +17,7 @@ func TestParseTokens_Valid(t *testing.T) {
 			name: "Valid string json",
 			tokenList: func() []internal.Token {
 				l := internal.NewLexer(`{"name":"ayo"}`)
-				err := l.ValidateTokens()
-				if err != nil {
-					return []internal.Token{}
-				}
+				l.ValidateTokens()
 				return l.Tokens
 			}(),
 			expectedBool: true,
@@ -32,10 +29,7 @@ func TestParseTokens_Valid(t *testing.T) {
 						  "num1": 123,
 						  "num2": 987
 						}`)
-				err := l.ValidateTokens()
-				if err != nil {
-					return []internal.Token{}
-				}
+				l.ValidateTokens()
 				return l.Tokens
 			}(),
 			expectedBool: true,
@@ -46,10 +40,7 @@ func TestParseTokens_Valid(t *testing.T) {
 				l := internal.NewLexer(`{
 						  "array": ["testing", "hello", 123, {"name":"hello"}]
 						}`)
-				err := l.ValidateTokens()
-				if err != nil {
-					return []internal.Token{}
-				}
+				l.ValidateTokens()
 				return l.Tokens
 			}(),
 			expectedBool: true,
@@ -58,10 +49,7 @@ func TestParseTokens_Valid(t *testing.T) {
 			name: "simple empty object",
 			tokenList: func() []internal.Token {
 				l := internal.NewLexer(`{}`)
-				err := l.ValidateTokens()
-				if err != nil {
-					return []internal.Token{}
-				}
+				l.ValidateTokens()
 				return l.Tokens
 			}(),
 			expectedBool: true,
@@ -129,10 +117,7 @@ func TestParseTokens_Valid(t *testing.T) {
 						1e00,2e+00,2e-00
 						,"rosebud"]
 `)
-				err := l.ValidateTokens()
-				if err != nil {
-					return []internal.Token{}
-				}
+				l.ValidateTokens()
 				return l.Tokens
 			}(),
 			expectedBool: true,
@@ -141,10 +126,7 @@ func TestParseTokens_Valid(t *testing.T) {
 			name: "deeply nested array",
 			tokenList: func() []internal.Token {
 				l := internal.NewLexer(`[[[[[[[[[[[[[[[[[[["Not too deep"]]]]]]]]]]]]]]]]]]]`)
-				err := l.ValidateTokens()
-				if err != nil {
-					return []internal.Token{}
-				}
+				l.ValidateTokens()
 				return l.Tokens
 			}(),
 			expectedBool: true,
@@ -159,10 +141,7 @@ func TestParseTokens_Valid(t *testing.T) {
 							"In this test": "It is an object."
 						}
 					}`)
-				err := l.ValidateTokens()
-				if err != nil {
-					return []internal.Token{}
-				}
+				l.ValidateTokens()
 				return l.Tokens
 			}(),
 			expectedBool: true,
@@ -190,10 +169,7 @@ func TestParseTokens_Invalid(t *testing.T) {
 			name: "Unclosed Array",
 			tokenList: func() []internal.Token {
 				l := internal.NewLexer(`["Unclosed array"`)
-				err := l.ValidateTokens()
-				if err != nil {
-					return []internal.Token{}
-				}
+				l.ValidateTokens()
 				return l.Tokens
 			}(),
 			expectedBool: false,
@@ -202,10 +178,7 @@ func TestParseTokens_Invalid(t *testing.T) {
 			name: "Extra comma",
 			tokenList: func() []internal.Token {
 				l := internal.NewLexer(`["extra comma",]`)
-				err := l.ValidateTokens()
-				if err != nil {
-					return []internal.Token{}
-				}
+				l.ValidateTokens()
 				return l.Tokens
 			}(),
 			expectedBool: false,
@@ -214,10 +187,7 @@ func TestParseTokens_Invalid(t *testing.T) {
 			name: "Double comma",
 			tokenList: func() []internal.Token {
 				l := internal.NewLexer(`["double comma",,]`)
-				err := l.ValidateTokens()
-				if err != nil {
-					return []internal.Token{}
-				}
+				l.ValidateTokens()
 				return l.Tokens
 			}(),
 			expectedBool: false,
@@ -226,10 +196,7 @@ func TestParseTokens_Invalid(t *testing.T) {
 			name: "Missing array value",
 			tokenList: func() []internal.Token {
 				l := internal.NewLexer(`[   , "<-- missing value"]`)
-				err := l.ValidateTokens()
-				if err != nil {
-					return []internal.Token{}
-				}
+				l.ValidateTokens()
 				return l.Tokens
 			}(),
 			expectedBool: false,
@@ -238,10 +205,7 @@ func TestParseTokens_Invalid(t *testing.T) {
 			name: "comma after close",
 			tokenList: func() []internal.Token {
 				l := internal.NewLexer(`["Comma after the close"],`)
-				err := l.ValidateTokens()
-				if err != nil {
-					return []internal.Token{}
-				}
+				l.ValidateTokens()
 				return l.Tokens
 			}(),
 			expectedBool: false,
@@ -250,10 +214,7 @@ func TestParseTokens_Invalid(t *testing.T) {
 			name: "Extra comma object",
 			tokenList: func() []internal.Token {
 				l := internal.NewLexer(`{"Extra comma": true,}`)
-				err := l.ValidateTokens()
-				if err != nil {
-					return []internal.Token{}
-				}
+				l.ValidateTokens()
 				return l.Tokens
 			}(),
 			expectedBool: false,
@@ -262,10 +223,7 @@ func TestParseTokens_Invalid(t *testing.T) {
 			name: "Missing Colon",
 			tokenList: func() []internal.Token {
 				l := internal.NewLexer(`{"Missing colon" null}`)
-				err := l.ValidateTokens()
-				if err != nil {
-					return []internal.Token{}
-				}
+				l.ValidateTokens()
 				return l.Tokens
 			}(),
 			expectedBool: false,
@@ -274,10 +232,7 @@ func TestParseTokens_Invalid(t *testing.T) {
 			name: "double colon",
 			tokenList: func() []internal.Token {
 				l := internal.NewLexer(`{"Double colon":: null}`)
-				err := l.ValidateTokens()
-				if err != nil {
-					return []internal.Token{}
-				}
+				l.ValidateTokens()
 				return l.Tokens
 			}(),
 			expectedBool: false,
@@ -286,10 +241,7 @@ func TestParseTokens_Invalid(t *testing.T) {
 			name: "comma instead of colon",
 			tokenList: func() []internal.Token {
 				l := internal.NewLexer(`{"Comma instead of colon", null}`)
-				err := l.ValidateTokens()
-				if err != nil {
-					return []internal.Token{}
-				}
+				l.ValidateTokens()
 				return l.Tokens
 			}(),
 			expectedBool: false,
@@ -298,10 +250,7 @@ func TestParseTokens_Invalid(t *testing.T) {
 			name: "colon instead of comma",
 			tokenList: func() []internal.Token {
 				l := internal.NewLexer(`["Colon instead of comma": false]`)
-				err := l.ValidateTokens()
-				if err != nil {
-					return []internal.Token{}
-				}
+				l.ValidateTokens()
 				return l.Tokens
 			}(),
 			expectedBool: false,
@@ -310,10 +259,7 @@ func TestParseTokens_Invalid(t *testing.T) {
 			name: "comma instead of closing brace",
 			tokenList: func() []internal.Token {
 				l := internal.NewLexer(`{"Comma instead if closing brace": true,`)
-				err := l.ValidateTokens()
-				if err != nil {
-					return []internal.Token{}
-				}
+				l.ValidateTokens()
 				return l.Tokens
 			}(),
 			expectedBool: false,

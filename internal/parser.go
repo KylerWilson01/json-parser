@@ -17,6 +17,7 @@ func NewParser(t []Token) *Parser {
 // ParseTokens loops through all the tokens to make sure it's valid
 func (p *Parser) ParseTokens() (bool, error) {
 	s := NewStack[TokenType]()
+
 	for i, t := range p.tokens {
 		switch t.Type {
 		case OpeningCurly:
@@ -38,14 +39,17 @@ func (p *Parser) ParseTokens() (bool, error) {
 			if prevTkn != ValueString && prevTkn != Number && prevTkn != True && prevTkn != False &&
 				prevTkn != Null &&
 				prevTkn != ClosingCurly &&
-				prevTkn != CloseingBracket &&
+				prevTkn != ClosingBracket &&
 				prevTkn != OpeningCurly {
 				return false, fmt.Errorf(
 					"VALUE_STRING or RIGHT_CURLY_BRACKET or LITERAL or RIGHT_SQUARE_BRACKET should preceed RIGHT_CURLY_BRACKET, instead got: %v",
 					prevTkn,
 				)
 			}
-			s.Pop()
+			state := s.Pop()
+			if state != OpeningCurly {
+				return false, fmt.Errorf("Unmatched curly braces")
+			}
 		case OpeningBracket:
 			if i == 0 {
 				s.Push(OpeningBracket)
@@ -59,19 +63,22 @@ func (p *Parser) ParseTokens() (bool, error) {
 				)
 			}
 			s.Push(OpeningBracket)
-		case CloseingBracket:
+		case ClosingBracket:
 			prevTkn := p.tokens[i-1].Type
 			if prevTkn != ValueString && prevTkn != Number && prevTkn != True && prevTkn != False &&
 				prevTkn != Null &&
 				prevTkn != ClosingCurly &&
-				prevTkn != CloseingBracket &&
+				prevTkn != ClosingBracket &&
 				prevTkn != OpeningBracket {
 				return false, fmt.Errorf(
 					"VALUE_STRING or RIGHT_CURLY_BRACKET or LITERAL or RIGHT_SQUARE_BRACKETshould preceed RIGHT_SQUARE_BRACKET, instead got: %v",
 					prevTkn,
 				)
 			}
-			s.Pop()
+			state := s.Pop()
+			if state != OpeningBracket {
+				return false, fmt.Errorf("Unmatched brackets")
+			}
 		case NameString:
 			prevTkn := p.tokens[i-1]
 			if prevTkn.Type != OpeningCurly && prevTkn.Type != Comma {
@@ -99,15 +106,14 @@ func (p *Parser) ParseTokens() (bool, error) {
 			}
 		case Comma:
 			prevTkn := p.tokens[i-1].Type
-			prevTknState := p.tokens[i-1].State
-			if prevTknState == Invalid {
+			if t.State == Invalid {
 				return false, fmt.Errorf(
 					"VALUE_SEPARATOR should not come after OpeningBrace or  RIGHT_CURLY_BRACKET (when the object isn't nested, got: %v",
 					prevTkn,
 				)
 			}
 
-			if prevTkn != OpeningCurly && (prevTkn != ValueString && prevTknState == InsideArray) &&
+			if prevTkn != ClosingCurly && prevTkn != ClosingBracket && prevTkn != ValueString &&
 				prevTkn != Number &&
 				prevTkn != Null &&
 				prevTkn != True &&
@@ -128,7 +134,7 @@ func (p *Parser) ParseTokens() (bool, error) {
 			}
 		case True, False, Null:
 			prevTkn := p.tokens[i-1]
-			if prevTkn.Type != Colon &&
+			if (t.State == InsideObject && prevTkn.Type != Colon) ||
 				(t.State == InsideArray && prevTkn.Type != Comma && prevTkn.Type != OpeningBracket) {
 				return false, fmt.Errorf(
 					"NAME_SEPARATOR should preceed LITERAL, instead got: %v",
